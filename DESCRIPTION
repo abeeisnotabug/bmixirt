@@ -1,0 +1,12 @@
+Package: bmixirt
+Type: Package
+Title: Bayesian Mixture IRT models
+Version: 0.1.0
+Author: Maximilian Bee
+Maintainer: Maximilian Bee <richard.maximilian.bee@fsu-jena.de>
+Description: Functions for generating mixture IRT data and
+  fitting stan models to it
+License: GPL (>= 3)
+Imports: spatstat.core (>= 2.3-1), extraDistr (>= 1.9.1), rootSolve (>= 1.8.2.3)
+Encoding: UTF-8
+LazyData: true
