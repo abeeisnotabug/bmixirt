@@ -59,6 +59,6 @@ generate_sinhsinh_stan_data <- function(N_levels, tol = sqrt(.Machine$double.eps
   )
 }
 
-make_lambda_inits <- function(n_chains, C) {
-  replicate(n_chains, list(lambda = `dim<-`(rep(1/C, C), C)), simplify = FALSE)
+make_ucp_inits <- function(n_chains, C) {
+  replicate(n_chains, list(uncond_class_prob = `dim<-`(rep(1/C, C), C)), simplify = FALSE)
 }
