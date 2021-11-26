@@ -24,7 +24,7 @@ lapply_tree <- function(iterators, iterator_names, my_expr) {
   } else {
     eval(
       str2expression(
-        make_lapply_tree_expr(iterators, iterator_names, body = deparse1(substitute(my_expr, env = environment()), collapse = ""))
+        make_lapply_tree_expr(iterators, iterator_names, body = paste(deparse(substitute(my_expr, env = environment())), collapse = "\n"))
       ),
       envir = parent.frame(n = 2)
     )
