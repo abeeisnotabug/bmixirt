@@ -1,4 +1,4 @@
-generate_sinhsinh_stan_data_new <- function(N_levels, tol = sqrt(.Machine$double.eps), J) {
+generate_sinhsinh_stan_data <- function(N_levels, tol = sqrt(.Machine$double.eps), J) {
   m_t_max <-  log(2 * 2 / pi * log(2 * 2/pi * sqrt(.Machine$double.xmax)))
 
   max_num_absc <- ceiling(m_t_max / (2 / 2^(N_levels - 1)))
