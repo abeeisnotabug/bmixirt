@@ -1,4 +1,4 @@
-generate_sinhsinh_stan_data <- function(N_levels, tol = sqrt(.Machine$double.eps), J) {
+generate_sinhsinh_stan_data_new <- function(N_levels, tol = sqrt(.Machine$double.eps), J) {
   m_t_max <-  log(2 * 2 / pi * log(2 * 2/pi * sqrt(.Machine$double.xmax)))
 
   max_num_absc <- ceiling(m_t_max / (2 / 2^(N_levels - 1)))
@@ -12,28 +12,24 @@ generate_sinhsinh_stan_data <- function(N_levels, tol = sqrt(.Machine$double.eps
   for (i in 1:N_levels) {
     h <- 0.5^(i - 1)
     j <- 1
-
     arg <- h
     while (arg < m_t_max) {
       tmp <- pi/2 * sinh(arg)
       x <- sinh(tmp)
-
       m_abscissas[[i]][j] <- x
-      m_weights[[i]][j] <- m_weights_resc[[i]][j] <- cosh(arg) * pi/2 * cosh(tmp)
-
+      m_weights[[i]][j] <- cosh(arg) * pi/2 * cosh(tmp)
       j <- j + 1
-
       if (i > 1) {
         arg <- arg + 2 * h
       } else {
         arg <- arg + h
       }
     }
-
     if (i > 2)
-      m_weights_resc[[i]] <- m_weights_resc[[i]] * h
+      m_weights_resc[[i]] <- m_weights[[i]] * h
+    else
+      m_weights_resc[[i]] <- m_weights[[i]]
   }
-
   abscissas_vec <- lapply(
     m_abscissas,
     function(level)
@@ -45,7 +41,6 @@ generate_sinhsinh_stan_data <- function(N_levels, tol = sqrt(.Machine$double.eps
         )
       )
   )
-
   list(
     N_levels = N_levels,
     max_N_nodes = max_num_absc,
