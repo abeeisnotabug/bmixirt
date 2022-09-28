@@ -81,7 +81,7 @@ convert_pars_to_other_model <- function(
   ctol = 1e-16
 ) {
   grm_diff_fun <- function(alpha_loading, given_betas_thresholds, irt, mode = "find_parameters") {
-    function(betas_to_find) {
+    function(betas_thresholds_to_find) {
       cum_prob <- if (mode == "find_parameters") {
         cbind(
           rep(1, length(given_betas_thresholds)),
@@ -105,7 +105,7 @@ convert_pars_to_other_model <- function(
   }
 
   gpcm_half_fun <- function(alpha_loading, given_betas_thresholds, irt, mode = "find_parameters") {
-    function(betas_to_find) {
+    function(betas_thresholds_to_find) {
       if (mode == "find_parameters") {
         diag(gpcm_cum_prob(given_betas_thresholds, alpha_loading, betas_thresholds_to_find, irt)) - 0.5
       } else if (mode == "find_intersection") {
