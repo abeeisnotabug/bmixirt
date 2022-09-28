@@ -118,7 +118,7 @@ convert_pars_to_other_model <- function(
     if (feature == "half") {
       rootSolve::multiroot(
         gpcm_half_fun(alpha_loading, betas_thresholds, irt, mode = "find_intersection"),
-        betas,
+        betas_thresholds,
         rtol = rtol,
         atol = atol,
         ctol = ctol
@@ -126,7 +126,7 @@ convert_pars_to_other_model <- function(
     } else if (feature == "intersection") {
       rootSolve::multiroot(
         grm_diff_fun(alpha_loading, betas_thresholds, irt, mode = "find_parameters"),
-        betas,
+        betas_thresholds,
         rtol = rtol,
         atol = atol,
         ctol = ctol
@@ -136,7 +136,7 @@ convert_pars_to_other_model <- function(
     if (feature == "intersection") {
       rootSolve::multiroot(
         grm_diff_fun(alpha_loading, betas_thresholds, irt, mode = "find_intersection"),
-        betas,
+        betas_thresholds,
         rtol = rtol,
         atol = atol,
         ctol = ctol
@@ -144,7 +144,7 @@ convert_pars_to_other_model <- function(
     } else if (feature == "half") {
       rootSolve::multiroot(
         gpcm_half_fun(alpha_loading, betas_thresholds, irt, mode = "find_parameters"),
-        betas,
+        betas_thresholds,
         rtol = rtol,
         atol = atol,
         ctol = ctol
