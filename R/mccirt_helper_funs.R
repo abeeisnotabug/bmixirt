@@ -177,15 +177,15 @@ extract_reorder_draws <- function(draws, metadata, ordercols = "var_threshold_c"
 make_simu_folders <- function(model, N_R, N_T, to_create)
   invisible(sapply(to_create, function(folder) dir.create(file.path(folder, model, N_R, N_T), recursive = TRUE)))
 
-make_sbatch_cmd <- function(model, N_R, N_T, iter_min, iter_max,
+make_sbatch_cmd <- function(model, N_R, N_T, rep_min, rep_max,
                             n_samples = 4000, n_warmup = 2000,
                             seed = 1909, chain_id_min = 1, chain_id_max = 4)
   sprintf("bash submit_models_summaries_sbatch_script.sh %s %i %i %i %i %i %i %i %i %i\n",
-          model, N_R, N_T, iter_min, iter_max, n_samples, n_warmup, seed, chain_id_min, chain_id_max)
+          model, N_R, N_T, rep_min, rep_max, n_samples, n_warmup, seed, chain_id_min, chain_id_max)
 
-make_delete_cmd <- function(folder = "fits", model, N_R, N_T, iteration, file_ext = "*", append = " -delete")
+make_delete_cmd <- function(folder = "fits", model, N_R, N_T, replication, file_ext = "*", append = " -delete")
   sprintf("find %s/%s/%i/%i/ -name mcc%s_r_itsl_%i_%i_%i_%s -type f%s\n",
-          folder, model, N_R, N_T, model, N_R, N_T, iteration, file_ext, append)
+          folder, model, N_R, N_T, model, N_R, N_T, replication, file_ext, append)
 
 load_files <- function(file_name, model, N_R, N_T) {
   these_files <- dir(
@@ -194,6 +194,6 @@ load_files <- function(file_name, model, N_R, N_T) {
     full.names = TRUE
   )
 
-  iteration <- as.integer(str_extract(these_files, sprintf("[0-9]+(?=_%s)", file_name)))
-  setnames(data.table(V1 = lapply(these_files, readRDS), iteration), "V1", file_name)
+  replication <- as.integer(str_extract(these_files, sprintf("[0-9]+(?=_%s)", file_name)))
+  setnames(data.table(V1 = lapply(these_files, readRDS), replication), "V1", file_name)
 }
