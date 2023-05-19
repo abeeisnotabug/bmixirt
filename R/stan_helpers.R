@@ -1,4 +1,4 @@
-generate_sinhsinh_stan_data <- function(N_levels, tol = sqrt(.Machine$double.eps), J) {
+generate_sinhsinh_stan_data <- function(N_levels, tol = sqrt(.Machine$double.eps), J = FALSE) {
   m_t_max <-  log(2 * 2 / pi * log(2 * 2/pi * sqrt(.Machine$double.xmax)))
 
   max_num_absc <- ceiling(m_t_max / (2 / 2^(N_levels - 1)))
@@ -30,22 +30,15 @@ generate_sinhsinh_stan_data <- function(N_levels, tol = sqrt(.Machine$double.eps
     else
       m_weights_resc[[i]] <- m_weights[[i]]
   }
-  abscissas_vec <- lapply(
-    m_abscissas,
-    function(level)
-      t(
-        sapply(
-          level,
-          rep,
-          J
-        )
-      )
-  )
+  if (!isFALSE(J))
+    abscissas_vec <- lapply(m_abscissas,
+                            function(level) t(sapply(level, rep, J)))
+
   list(
     N_levels = N_levels,
     max_N_nodes = max_num_absc,
     abscissas = m_abscissas,
-    abscissas_vec = abscissas_vec,
+    if (!isFALSE(J)) abscissas_vec = abscissas_vec,
     weights = m_weights,
     weights_resc = m_weights_resc,
     node_indices = node_indices[seq_len(N_levels)],
@@ -54,6 +47,21 @@ generate_sinhsinh_stan_data <- function(N_levels, tol = sqrt(.Machine$double.eps
   )
 }
 
-make_ucp_inits <- function(n_chains, C) {
-  replicate(n_chains, list(uncond_class_prob = `dim<-`(rep(1/C, C), C)), simplify = FALSE)
-}
+mccirt_r_itsl_v0_initfun <- function(K, J, C, N_R, N_T, N_I)
+  list(uncond_classprob = rep(1/C, C),
+       threshold_c = abind::abind(lapply(1:C, function(bnd) array(rep(seq(-bnd, bnd, length.out = J), each = K), dim = c(1, K, J))), along = 1),
+       log_loading_I_c = rep(0, K),
+       log_loading_R_c = rep(0, K),
+       log_loading_T_c = rep(0, K),
+       intercept = rep(0, C),
+       log_scaling_I = 0,
+       log_scaling_R = rep(0, C),
+       log_scaling_T = 0,
+       ability_I = rep(0, N_I),
+       ability_R = rep(0, N_R),
+       ability_T = rep(0, N_T))
+
+compile_model <- function(cmdstan_path = cmdstanr::cmdstan_path(), path_prefix = file.path("data", "sim", "li53vet"), path, wait = FALSE)
+  system(sprintf("cd %s\nmake %s",
+                 cmdstan_path, file.path(path_prefix, path)),
+         wait = wait)
