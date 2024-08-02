@@ -40,10 +40,13 @@ generate_sinhsinh_stan_data <- function(N_levels, tol = sqrt(.Machine$double.eps
                        weights = m_weights,
                        weights_resc = m_weights_resc)
 
-  if (!isFALSE(J))
-    append(results_list[1:3],
+  if (isFALSE(J)) {
+    results_list
+  } else {
+    append(results_list[1:6],
            append(list(abscissas_vec = lapply(m_abscissas, function(level) t(sapply(level, rep, J)))),
-                  results_list[4:8]))
+                  results_list[7:8]))
+  }
 }
 
 mccirt_r_itsl_v0_initfun <- function(K, J, C, N_R, N_T, N_I)
