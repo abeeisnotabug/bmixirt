@@ -30,21 +30,20 @@ generate_sinhsinh_stan_data <- function(N_levels, tol = sqrt(.Machine$double.eps
     else
       m_weights_resc[[i]] <- m_weights[[i]]
   }
-  if (!isFALSE(J))
-    abscissas_vec <- lapply(m_abscissas,
-                            function(level) t(sapply(level, rep, J)))
 
-  list(
-    N_levels = N_levels,
-    max_N_nodes = max_num_absc,
-    abscissas = m_abscissas,
-    if (!isFALSE(J)) abscissas_vec = abscissas_vec,
-    weights = m_weights,
-    weights_resc = m_weights_resc,
-    node_indices = node_indices[seq_len(N_levels)],
-    integrate = ifelse(tol < 1.0, 1L, 0L),
-    tol = tol
-  )
+  results_list <- list(integrate = ifelse(tol < 1.0, 1L, 0L),
+                       tol = tol,
+                       N_levels = N_levels,
+                       max_N_nodes = max_num_absc,
+                       node_indices = node_indices[seq_len(N_levels)],
+                       abscissas = m_abscissas,
+                       weights = m_weights,
+                       weights_resc = m_weights_resc)
+
+  if (!isFALSE(J))
+    append(results_list[1:3],
+           append(list(abscissas_vec = lapply(m_abscissas, function(level) t(sapply(level, rep, J)))),
+                  results_list[4:8]))
 }
 
 mccirt_r_itsl_v0_initfun <- function(K, J, C, N_R, N_T, N_I)

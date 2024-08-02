@@ -17,18 +17,16 @@ make_run_model_code <- function(model_name, data_name, stan_file, interface = "c
 run_model <- function(model_name, data_name, stan_file, interface, C, n_chains, n_iter, n_warmup, refresh, adapt_delta, max_treedepth, init, seed, integrate)
   system(make_run_model_code(model_name, data_name, stan_file, interface, C, n_chains, n_iter, n_warmup, refresh, adapt_delta, max_treedepth, init, seed, integrate, nohup = TRUE, disengage = FALSE), intern = FALSE, wait = FALSE)
 
-extract_draws <- function(draws, variable) draws[, c(str_subset(names(draws), paste(sprintf("^%s(\\[|$)", variable), collapse = "|")), c(".chain", ".iteration", ".draw"))]
-
 extract_itempars <- function(draws) {
-  intercept_logscalingR <- as.data.table(extract_draws(draws, c("intercept", "log_scaling_R")))
+  intercept_logscalingR <- as.data.table(posterior::subset_draws(draws, variable = c("intercept", "log_scaling_R")))
   intercept_logscalingR[, c(".chain", ".iteration") := NULL]
   intercept_logscalingR <- melt(intercept_logscalingR, measure = patterns("^intercept", "^log_scaling_R"),
                                 variable.name = "c", value.name = c("intercept", "log_scaling_R"))
 
-  logscalingIT <- as.data.table(extract_draws(draws, c("log_scaling_I", "log_scaling_T")))
+  logscalingIT <- as.data.table(posterior::subset_draws(draws, variable = c("log_scaling_I", "log_scaling_T")))
   logscalingIT[, c(".chain", ".iteration") := NULL]
 
-  thresholdsc <- as.data.table(extract_draws(draws, "threshold_c"))
+  thresholdsc <- as.data.table(posterior::subset_draws(draws, variable = "threshold_c"))
   thresholdsc[, c(".chain", ".iteration") := NULL]
   setnames(thresholdsc, names(thresholdsc), str_replace_all(names(thresholdsc), c("\\[" = ",", "\\]" = "")))
   thresholdsc <- melt(thresholdsc, measure = patterns("^threshold_c"), value.name = "threshold_c")
@@ -36,14 +34,14 @@ extract_itempars <- function(draws) {
   thresholdsc[, c("c", "item") := .(factor(c), factor(item, levels = seq_along(unique(item)), ordered = TRUE))]
   thresholdsc <- dcast(thresholdsc, .draw + c + item ~ variable + category, value.var = "threshold_c")
 
-  logloadingsc <- as.data.table(extract_draws(draws, c("log_loading_I_c", "log_loading_R_c", "log_loading_T_c")))
+  logloadingsc <- as.data.table(posterior::subset_draws(draws, variable = c("log_loading_I_c", "log_loading_R_c", "log_loading_T_c")))
   logloadingsc[, c(".chain", ".iteration") := NULL]
   setnames(logloadingsc, names(logloadingsc), str_replace_all(names(logloadingsc), c("\\[" = ",", "\\]" = "")))
   logloadingsc <- melt(logloadingsc, measure = patterns("^log_loading_I_c", "^log_loading_R_c", "^log_loading_T_c"),
                        variable.name = "item", value.name = c("log_loading_I_c", "log_loading_R_c", "log_loading_T_c"))
   logloadingsc[, item := factor(item, ordered = TRUE)]
 
-  ucp <- as.data.table(extract_draws(draws, "uncond_classprob"))
+  ucp <- as.data.table(posterior::subset_draws(draws, variable = "uncond_classprob"))
   ucp[, c(".chain", ".iteration") := NULL]
   ucp <- melt(ucp, measure = patterns("^uncond_classprob"), variable.name = "c", value.name = "uncond_classprob")
   ucp[, c := factor(c, labels = seq_along(unique(c)))]
@@ -111,16 +109,16 @@ extract_reorder_draws <- function(draws, metadata, ordercols = "var_threshold_c"
   cat(sprintf("## Reordering parameters based on %s: ", paste(ordercols, collapse = ", ")), sep = "")
 
   id.vars <- c(".chain", ".iteration", ".draw")
-  vars_in_draws <- unique(str_extract(setdiff(names(draws), id.vars), "[^\\[]+"))
+  vars_in_draws <- unique(str_extract(posterior::variables(draws), "[^\\[]+"))
 
-  corder <- as.data.table(extract_draws(draws, ordercols))
+  corder <- as.data.table(posterior::subset_draws(draws, variable = ordercols))
   corder <- melt(corder, measure.vars = patterns(ordercols), variable.name = "c", value.name = ordercols)
   corder[, c := as.character(factor(c, labels = seq_along(levels(c))))]
 
   if (length(ordercols) == 1) {
-    corder[, c_re := as.character(order(order(get(ordercols)))), by = .(.chain, .iteration, .draw)]
+    corder[, c_re := as.character(order(order(get(ordercols)))), by = id.vars]
   } else if (length(ordercols) == 2) {
-    corder[, c_re := as.character(order(c(which.min(get(ordercols[1])), setdiff(order(get(ordercols[2])), which.min(get(ordercols[1])))))), by = .(.chain, .iteration, .draw)]
+    corder[, c_re := as.character(order(c(which.min(get(ordercols[1])), setdiff(order(get(ordercols[2])), which.min(get(ordercols[1])))))), by = id.vars]
   } else {
     stop("Sorry, more than two ordercols are not supported because the re-ordering is hard-coded lol.")
   }
@@ -142,12 +140,12 @@ extract_reorder_draws <- function(draws, metadata, ordercols = "var_threshold_c"
   if (corder[, uniqueN(c_re), by = .(.chain, c)][, uniqueN(V1)] != 1)
     warning("!!!!! There seems to be more than one ordering per group.")
 
-  combdraws <- as.data.table(extract_draws(draws, nomixpars))
+  combdraws <- as.data.table(posterior::subset_draws(draws, variable = nomixpars))
 
   for (parname in c(mixpars_1, mixpars_2)) {
     cat(paste0(parname, if (parname != tail(c(mixpars_1, mixpars_2), 1)) ", "))
 
-    this_DT <- as.data.table(extract_draws(draws, parname))
+    this_DT <- as.data.table(posterior::subset_draws(draws, variable = parname))
     this_DT <- melt(this_DT, id.vars = id.vars)
     this_DT[, idx := variable]
     this_DT[, idx := as.character(factor(idx, labels = str_sub(str_split_fixed(levels(idx), "\\[", 2)[, 2], 1, -2)))]
@@ -179,9 +177,10 @@ make_simu_folders <- function(model, N_R, N_T, to_create)
 
 make_sbatch_cmd <- function(model, N_R, N_T, rep_min, rep_max,
                             n_samples = 4000, n_warmup = 2000,
-                            seed = 1909, chain_id_min = 1, chain_id_max = 4)
-  sprintf("bash submit_models_summaries_sbatch_script.sh %s %i %i %i %i %i %i %i %i %i\n",
-          model, N_R, N_T, rep_min, rep_max, n_samples, n_warmup, seed, chain_id_min, chain_id_max)
+                            seed = 1909, chain_id_min = 1, chain_id_max = 4,
+                            partition = ifelse(N_T == 500, "long", "standard"))
+  sprintf("bash submit_models_summaries_sbatch_script.sh %s %i %i %i %i %i %i %i %i %i %s\n",
+          model, N_R, N_T, rep_min, rep_max, n_samples, n_warmup, seed, chain_id_min, chain_id_max, partition)
 
 make_delete_cmd <- function(folder = "fits", model, N_R, N_T, replication, file_ext = "*", append = " -delete")
   sprintf("find %s/%s/%i/%i/ -name mcc%s_r_itsl_%i_%i_%i_%s -type f%s\n",
