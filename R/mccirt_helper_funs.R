@@ -105,7 +105,7 @@ grm_diff_fun <- function(intersections_to_find, parms) {
   diag(differences)
 }
 
-extract_reorder_draws <- function(draws, metadata, ordercols = "var_threshold_c") {
+extract_reorder_draws <- function(draws, metadata, ordercols = "var_threshold_c", reorder = TRUE) {
   cat(sprintf("## Reordering parameters based on %s: ", paste(ordercols, collapse = ", ")), sep = "")
 
   id.vars <- c(".chain", ".iteration", ".draw")
@@ -137,39 +137,41 @@ extract_reorder_draws <- function(draws, metadata, ordercols = "var_threshold_c"
   if (!length(c(mixpars_1, mixpars_2)))
     stop("!!!!!!!!!! There are no mixture parameters in the draws.")
 
-  if (corder[, uniqueN(c_re), by = .(.chain, c)][, uniqueN(V1)] != 1)
+  if (!isTRUE(all.equal(corder[, uniqueN(c_re), by = .(.chain, c)][, unique(V1)], 1)))
     warning("!!!!! There seems to be more than one ordering per group.")
 
-  combdraws <- as.data.table(posterior::subset_draws(draws, variable = nomixpars))
+  if (reorder) {
+    combdraws <- as.data.table(posterior::subset_draws(draws, variable = nomixpars))
 
-  for (parname in c(mixpars_1, mixpars_2)) {
-    cat(paste0(parname, if (parname != tail(c(mixpars_1, mixpars_2), 1)) ", "))
+    for (parname in c(mixpars_1, mixpars_2)) {
+      cat(paste0(parname, if (parname != tail(c(mixpars_1, mixpars_2), 1)) ", "))
 
-    this_DT <- as.data.table(posterior::subset_draws(draws, variable = parname))
-    this_DT <- melt(this_DT, id.vars = id.vars)
-    this_DT[, idx := variable]
-    this_DT[, idx := as.character(factor(idx, labels = str_sub(str_split_fixed(levels(idx), "\\[", 2)[, 2], 1, -2)))]
-    this_DT[, variable := as.character(factor(variable, labels = str_split_fixed(levels(variable), "\\[", 2)[, 1]))]
-    this_DT[, c := as.character(idx)]
-    if (parname %in% mixpars_1) {
-      Cl <- str_length(metadata$stan_variable_sizes$uncond_classprob)
-      this_DT[, c := str_sub(idx, 1, Cl)]
-      this_DT[, idx := str_sub(idx, Cl + 1, -1)]
-      this_DT[corder, c := c_re, on = c(".chain", ".iteration", ".draw", "c")]
-      this_DT[, variable := paste0(variable, "[", c, idx, "]")]
-    } else {
-      this_DT[, c := str_sub(idx, -Cl, -1)]
-      this_DT[, idx := str_sub(idx, 1, -(Cl + 1))]
-      this_DT[corder, c := c_re, on = c(".chain", ".iteration", ".draw", "c")]
-      this_DT[, variable := paste0(variable, "[", idx, c, "]")]
+      this_DT <- as.data.table(posterior::subset_draws(draws, variable = parname))
+      this_DT <- melt(this_DT, id.vars = id.vars)
+      this_DT[, idx := variable]
+      this_DT[, idx := as.character(factor(idx, labels = str_sub(str_split_fixed(levels(idx), "\\[", 2)[, 2], 1, -2)))]
+      this_DT[, variable := as.character(factor(variable, labels = str_split_fixed(levels(variable), "\\[", 2)[, 1]))]
+      this_DT[, c := as.character(idx)]
+      if (parname %in% mixpars_1) {
+        Cl <- str_length(metadata$stan_variable_sizes$uncond_classprob)
+        this_DT[, c := str_sub(idx, 1, Cl)]
+        this_DT[, idx := str_sub(idx, Cl + 1, -1)]
+        this_DT[corder, c := c_re, on = c(".chain", ".iteration", ".draw", "c")]
+        this_DT[, variable := paste0(variable, "[", c, idx, "]")]
+      } else {
+        this_DT[, c := str_sub(idx, -Cl, -1)]
+        this_DT[, idx := str_sub(idx, 1, -(Cl + 1))]
+        this_DT[corder, c := c_re, on = c(".chain", ".iteration", ".draw", "c")]
+        this_DT[, variable := paste0(variable, "[", idx, c, "]")]
+      }
+      this_DT <- dcast(this_DT, .chain + .iteration + .draw ~ variable, value.var = "value")
+
+      combdraws[this_DT, (setdiff(names(this_DT), id.vars)) := mget(setdiff(names(this_DT), id.vars)), on = id.vars]
     }
-    this_DT <- dcast(this_DT, .chain + .iteration + .draw ~ variable, value.var = "value")
+    cat("\n## Done.", sep = "\n")
 
-    combdraws[this_DT, (setdiff(names(this_DT), id.vars)) := mget(setdiff(names(this_DT), id.vars)), on = id.vars]
+    as_draws_df(combdraws)
   }
-  cat("\n## Done.", sep = "\n")
-
-  as_draws_df(combdraws)
 }
 
 make_simu_folders <- function(model, N_R, N_T, to_create)

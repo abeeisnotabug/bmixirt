@@ -63,6 +63,14 @@ mccirt_r_itsl_v0_initfun <- function(K, J, C, N_R, N_T, N_I)
        ability_R = rep(0, N_R),
        ability_T = rep(0, N_T))
 
+mirt_itsl_v0_initfun <- function(K, J, C, N)
+  list(uncond_classprob = rep(1/C, C),
+       threshold_c = abind::abind(lapply(1:C, function(bnd) array(rep(seq(-bnd, bnd, length.out = J), each = K), dim = c(1, K, J))), along = 1),
+       log_loading_c = rep(0, K),
+       intercept = rep(0, C),
+       log_scaling = rep(0, C),
+       ability = rep(0, N))
+
 compile_model <- function(cmdstan_path = cmdstanr::cmdstan_path(), path_prefix = file.path("data", "sim", "li53vet"), path, wait = FALSE)
   system(sprintf("cd %s\nmake %s",
                  cmdstan_path, file.path(path_prefix, path)),
