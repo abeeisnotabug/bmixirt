@@ -10,7 +10,9 @@ give_pois_mirt <- function(log = TRUE, cent = TRUE, marginal = FALSE)
     paste0(if (log) "log_", "scaling_"),
     if (!marginal) "ability")
 
-make_run_model_code <- function(model_name, data_name, stan_file, interface = "cmdstanr", C, n_chains = 4, n_iter = 10000, n_warmup = 4000, refresh = 100, adapt_delta = .8, max_treedepth = 10, init = "0", seed = 1909, integrate = 1, nohup = FALSE, disengage = TRUE)
+make_run_model_code <- function(model_name, data_name, stan_file, interface = "cmdstanr", C,
+                                n_chains = 4, n_iter = 10000, n_warmup = 4000, refresh = 100, adapt_delta = .8, max_treedepth = 10,
+                                init = "0", seed = 1909, integrate = 1, nohup = FALSE, disengage = TRUE)
   sprintf(
     "%sRscript --vanilla run_mixmodel.R %s %s %s %s %i %i %i %i %i %.3f %i %s %i %i > fits/logfiles/%s/%s.out 2> fits/logfiles/%s/%s.err%s",
     if (nohup) "nohup " else "",
@@ -20,10 +22,14 @@ make_run_model_code <- function(model_name, data_name, stan_file, interface = "c
     if (disengage) " &" else ""
   )
 
-run_model <- function(model_name, data_name, stan_file, interface, C, n_chains, n_iter, n_warmup, refresh, adapt_delta, max_treedepth, init, seed, integrate)
-  system(make_run_model_code(model_name, data_name, stan_file, interface, C, n_chains, n_iter, n_warmup, refresh, adapt_delta, max_treedepth, init, seed, integrate, nohup = TRUE, disengage = FALSE), intern = FALSE, wait = FALSE)
+run_model <- function(model_name, data_name, stan_file, interface, C,
+                      n_chains, n_iter, n_warmup, refresh, adapt_delta, max_treedepth,
+                      init, seed, integrate)
+  system(make_run_model_code(model_name, data_name, stan_file, interface, C,
+                             n_chains, n_iter, n_warmup, refresh, adapt_delta, max_treedepth, init, seed, integrate,
+                             nohup = TRUE, disengage = FALSE), intern = FALSE, wait = FALSE)
 
-extract_itempars <- function(draws) {
+extract_itempars_mccirt <- function(draws) {
   intercept_logscalingR <- as.data.table(posterior::subset_draws(draws, variable = c("intercept", "log_scaling_R")))
   intercept_logscalingR[, c(".chain", ".iteration") := NULL]
   intercept_logscalingR <- melt(intercept_logscalingR, measure = patterns("^intercept", "^log_scaling_R"),
@@ -54,6 +60,44 @@ extract_itempars <- function(draws) {
 
   parDT <- merge(intercept_logscalingR, logscalingIT)
   parDT <- merge(parDT, logscalingIT)
+  parDT <- merge(parDT, thresholdsc, by = c(".draw", "c"))
+  parDT <- merge(parDT, logloadingsc, by = c(".draw", "item"))
+  parDT <- merge(parDT, ucp, by = c(".draw", "c"))
+
+  scaling_names <- str_sort(str_subset(names(parDT), "log_"))
+  threshold_names <- str_sort(str_subset(names(parDT), "threshold"), numeric = TRUE)
+  setcolorder(parDT, c(".draw", "c", "item", rev(scaling_names), "intercept", threshold_names, "uncond_classprob"))
+  # parDT[, c := dplyr::recode(c, !!!setNames(order(.SD[, var(c(as.matrix(.SD))), .SDcols = threshold_names, by = c]$V1), seq_along(unique(c)))), by = .draw]
+  setkey(parDT, .draw, c, item)
+  parDT[]
+}
+
+extract_itempars_mirt <- function(draws) {
+  intercept_logscaling <- as.data.table(posterior::subset_draws(draws, variable = c("intercept", "log_scaling")))
+  intercept_logscaling[, c(".chain", ".iteration") := NULL]
+  intercept_logscaling <- melt(intercept_logscalingR, measure = patterns("^intercept", "^log_scaling"),
+                                variable.name = "c", value.name = c("intercept", "log_scaling"))
+
+  thresholdsc <- as.data.table(posterior::subset_draws(draws, variable = "threshold_c"))
+  thresholdsc[, c(".chain", ".iteration") := NULL]
+  setnames(thresholdsc, names(thresholdsc), str_replace_all(names(thresholdsc), c("\\[" = ",", "\\]" = "")))
+  thresholdsc <- melt(thresholdsc, measure = patterns("^threshold_c"), value.name = "threshold_c")
+  thresholdsc[, c("variable", "c", "item", "category") := tstrsplit(variable, ",", fixed = TRUE, type.convert = FALSE)]
+  thresholdsc[, c("c", "item") := .(factor(c), factor(item, levels = seq_along(unique(item)), ordered = TRUE))]
+  thresholdsc <- dcast(thresholdsc, .draw + c + item ~ variable + category, value.var = "threshold_c")
+
+  logloadingsc <- as.data.table(posterior::subset_draws(draws, variable = "log_loading_c"))
+  logloadingsc[, c(".chain", ".iteration") := NULL]
+  setnames(logloadingsc, names(logloadingsc), str_replace_all(names(logloadingsc), c("\\[" = ",", "\\]" = "")))
+  logloadingsc <- melt(logloadingsc, measure = patterns("^log_loading_c"),
+                       variable.name = "item", value.name = "log_loading_c")
+  logloadingsc[, item := factor(item, ordered = TRUE)]
+
+  ucp <- as.data.table(posterior::subset_draws(draws, variable = "uncond_classprob"))
+  ucp[, c(".chain", ".iteration") := NULL]
+  ucp <- melt(ucp, measure = patterns("^uncond_classprob"), variable.name = "c", value.name = "uncond_classprob")
+  ucp[, c := factor(c, labels = seq_along(unique(c)))]
+
   parDT <- merge(parDT, thresholdsc, by = c(".draw", "c"))
   parDT <- merge(parDT, logloadingsc, by = c(".draw", "item"))
   parDT <- merge(parDT, ucp, by = c(".draw", "c"))
