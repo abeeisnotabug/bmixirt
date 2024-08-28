@@ -1,8 +1,14 @@
-give_pois <- function(log = TRUE, cent = TRUE, marginal = FALSE)
+give_pois_mccirt <- function(log = TRUE, cent = TRUE, marginal = FALSE)
   c("uncond_classprob", "intercept", paste0("threshold", if (cent) "_c"),
     paste0(if (log) "log_", "loading_", c("I", "R", "T"), "_c"),
     paste0(if (log) "log_", "scaling_", c("I", "R", "T")),
     "ability_T", if (!marginal) c("ability_R", "ability_I"))
+
+give_pois_mirt <- function(log = TRUE, cent = TRUE, marginal = FALSE)
+  c("uncond_classprob", "intercept", paste0("threshold", if (cent) "_c"),
+    paste0(if (log) "log_", "loading_", "_c"),
+    paste0(if (log) "log_", "scaling_"),
+    if (!marginal) "ability")
 
 make_run_model_code <- function(model_name, data_name, stan_file, interface = "cmdstanr", C, n_chains = 4, n_iter = 10000, n_warmup = 4000, refresh = 100, adapt_delta = .8, max_treedepth = 10, init = "0", seed = 1909, integrate = 1, nohup = FALSE, disengage = TRUE)
   sprintf(
@@ -172,29 +178,4 @@ extract_reorder_draws <- function(draws, metadata, ordercols = "var_threshold_c"
 
     as_draws_df(combdraws)
   }
-}
-
-make_simu_folders <- function(model, N_R, N_T, to_create)
-  invisible(sapply(to_create, function(folder) dir.create(file.path(folder, model, N_R, N_T), recursive = TRUE)))
-
-make_sbatch_cmd <- function(model, N_R, N_T, rep_min, rep_max,
-                            n_samples = 4000, n_warmup = 2000,
-                            seed = 1909, chain_id_min = 1, chain_id_max = 4,
-                            partition = ifelse(N_T == 500, "long", "standard"))
-  sprintf("bash submit_models_summaries_sbatch_script.sh %s %i %i %i %i %i %i %i %i %i %s\n",
-          model, N_R, N_T, rep_min, rep_max, n_samples, n_warmup, seed, chain_id_min, chain_id_max, partition)
-
-make_delete_cmd <- function(folder = "fits", model, N_R, N_T, replication, file_ext = "*", append = " -delete")
-  sprintf("find %s/%s/%i/%i/ -name mcc%s_r_itsl_%i_%i_%i_%s -type f%s\n",
-          folder, model, N_R, N_T, model, N_R, N_T, replication, file_ext, append)
-
-load_files <- function(file_name, model, N_R, N_T) {
-  these_files <- dir(
-    path = file.path("summaries", model, N_R, N_T),
-    pattern = sprintf("mcc%s_r_itsl_%i_%i_[0-9]+_%s.rds", model, N_R, N_T, file_name),
-    full.names = TRUE
-  )
-
-  replication <- as.integer(str_extract(these_files, sprintf("[0-9]+(?=_%s)", file_name)))
-  setnames(data.table(V1 = lapply(these_files, readRDS), replication), "V1", file_name)
 }
