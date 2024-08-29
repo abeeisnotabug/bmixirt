@@ -75,8 +75,8 @@ extract_itempars_mccirt <- function(draws) {
 extract_itempars_mirt <- function(draws) {
   intercept_logscaling <- as.data.table(posterior::subset_draws(draws, variable = c("intercept", "log_scaling")))
   intercept_logscaling[, c(".chain", ".iteration") := NULL]
-  intercept_logscaling <- melt(intercept_logscalingR, measure = patterns("^intercept", "^log_scaling"),
-                                variable.name = "c", value.name = c("intercept", "log_scaling"))
+  intercept_logscaling <- melt(intercept_logscaling, measure = patterns("^intercept", "^log_scaling"),
+                               variable.name = "c", value.name = c("intercept", "log_scaling"))
 
   thresholdsc <- as.data.table(posterior::subset_draws(draws, variable = "threshold_c"))
   thresholdsc[, c(".chain", ".iteration") := NULL]
@@ -91,14 +91,14 @@ extract_itempars_mirt <- function(draws) {
   setnames(logloadingsc, names(logloadingsc), str_replace_all(names(logloadingsc), c("\\[" = ",", "\\]" = "")))
   logloadingsc <- melt(logloadingsc, measure = patterns("^log_loading_c"),
                        variable.name = "item", value.name = "log_loading_c")
-  logloadingsc[, item := factor(item, ordered = TRUE)]
+  logloadingsc[, item := factor(as.integer(factor(item)), ordered = TRUE)]
 
   ucp <- as.data.table(posterior::subset_draws(draws, variable = "uncond_classprob"))
   ucp[, c(".chain", ".iteration") := NULL]
   ucp <- melt(ucp, measure = patterns("^uncond_classprob"), variable.name = "c", value.name = "uncond_classprob")
   ucp[, c := factor(c, labels = seq_along(unique(c)))]
 
-  parDT <- merge(parDT, thresholdsc, by = c(".draw", "c"))
+  parDT <- merge(intercept_logscaling, thresholdsc, by = c(".draw", "c"))
   parDT <- merge(parDT, logloadingsc, by = c(".draw", "item"))
   parDT <- merge(parDT, ucp, by = c(".draw", "c"))
 
