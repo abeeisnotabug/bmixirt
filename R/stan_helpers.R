@@ -50,14 +50,14 @@ generate_sinhsinh_stan_data <- function(N_levels, tol = sqrt(.Machine$double.eps
 }
 
 mccirt_r_itsl_v0_initfun <- function(K, J, C, N_R, N_T, N_I)
-  list(uncond_classprob = rep(1/C, C),
+  list(uncond_classprob = `dim<-`(rep(1/C, C), C),
        threshold_c = abind::abind(lapply(1:C, function(bnd) array(rep(seq(-bnd, bnd, length.out = J), each = K), dim = c(1, K, J))), along = 1),
        log_loading_I_c = rep(0, K),
        log_loading_R_c = rep(0, K),
        log_loading_T_c = rep(0, K),
-       intercept = rep(0, C),
+       intercept = `dim<-`(rep(0, C), C),
        log_scaling_I = 0,
-       log_scaling_R = rep(0, C),
+       log_scaling_R = `dim<-`(rep(0, C), C),
        log_scaling_T = 0,
        ability_I = rep(0, N_I),
        ability_R = rep(0, N_R),
