@@ -63,7 +63,7 @@ mccirt_r_itsl_v0_initfun <- function(K, J, C, N_R, N_T, N_I)
        ability_R = rep(0, N_R),
        ability_T = rep(0, N_T))
 
-mirt_itsl_v0_initfun <- function(K, J, C, N)
+mirt_v0_initfun <- function(K, J, C, N)
   list(uncond_classprob = `dim<-`(rep(1/C, C), C),
        threshold_c = abind::abind(lapply(1:C, function(bnd) array(rep(seq(-bnd, bnd, length.out = J), each = K), dim = c(1, K, J))), along = 1),
        log_loading_c = rep(0, K),
